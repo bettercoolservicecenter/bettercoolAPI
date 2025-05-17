@@ -180,11 +180,10 @@ module.exports.updateCartQuantity = async (req, res) => {
 
 module.exports.removeFromCart = async (req, res) => {
     try {
-        const userId = req.user.id;
         const { productId } = req.params; // Retrieve productId from URL parameters
 
-        // Find the user's cart
-        const cart = await Cart.findOne({ userId });
+        // Allow for anonymous access by searching for the cart with userId as null
+        const cart = await Cart.findOne({ userId: null });
 
         if (!cart) {
             return res.status(404).json({ success: false, message: 'Cart not found' });
