@@ -16,17 +16,25 @@ module.exports.getCart = async (req, res) => {
       return res.status(404).json({ success: false, message: 'Cart not found' });
     }
 
+    // Check if cartItems exist and map them
+    const cartItems = cart.cartItems.map(item => {
+      if (item && item.productId) { // Ensure item and productId are not null
+        return {
+          productId: item.productId._id,
+          quantity: item.quantity,
+          subtotal: item.subtotal,
+          _id: item._id
+        };
+      }
+      return null; // Return null for any invalid items
+    }).filter(item => item !== null); // Filter out null items
+
     // Send the cart as a response
     return res.status(200).json({
       cart: {
         _id: cart._id,
         userId: cart.userId,
-        cartItems: cart.cartItems.map(item => ({
-          productId: item.productId._id,
-          quantity: item.quantity,
-          subtotal: item.subtotal,
-          _id: item._id
-        })),
+        cartItems: cartItems, // Use the filtered cart items
         totalPrice: cart.totalPrice,
         orderedOn: cart.orderedOn,
         __v: cart.__v
@@ -230,9 +238,9 @@ module.exports.removeFromCart = async (req, res) => {
 
 module.exports.clearCart = async (req, res) => {
     try {
-        const userId = req.user.id;
+        const userId = req.user ? req.user.id : null; // Allow for anonymous access
 
-        // Find the user's cart
+        // Find the user's cart (or anonymous cart)
         const cart = await Cart.findOne({ userId });
 
         if (!cart) {
@@ -266,4 +274,29 @@ module.exports.clearCart = async (req, res) => {
 
 module.exports.bookItem = async (req, res) => {
   // Your logic for booking an item
+};
+
+module.exports.getCartItemCount = async (req, res) => {
+  try {
+    const userId = req.user ? req.user.id : null; // Allow for anonymous access
+
+    // Find the cart for the user or anonymous user
+    const cart = await Cart.findOne({ userId: userId || null });
+
+    if (!cart) {
+      return res.status(404).json({ success: false, message: 'Cart not found' });
+    }
+
+    // Calculate total quantity
+    const totalQuantity = cart.cartItems.reduce((total, item) => total + item.quantity, 0);
+
+    // Send the total quantity as a response
+    return res.status(200).json({
+      success: true,
+      totalQuantity
+    });
+  } catch (error) {
+    console.error('Error retrieving cart item count:', error);
+    return res.status(500).json({ success: false, message: 'Server error', error: error.message });
+  }
 };
