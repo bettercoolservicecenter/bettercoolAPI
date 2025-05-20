@@ -247,3 +247,55 @@ module.exports.searchByPrice = async (req, res) => {
       return res.status(500).json({ success: false, message: 'Server error', error: error.message });
   }
 };
+
+module.exports.searchByDescription = async (req, res) => {
+  try {
+    const { description } = req.body;
+
+    if (!description) {
+      return res.status(400).json({ success: false, message: 'Description is required' });
+    }
+
+    // Case-insensitive, partial match on description
+    const products = await Product.find({ description: new RegExp(description, 'i') });
+
+    return res.status(200).json(products.map(product => ({
+      _id: product._id,
+      name: product.name,
+      description: product.description,
+      price: product.price,
+      isActive: product.isActive,
+      imageUrl: product.imageUrl,
+      createdOn: product.createdOn,
+      __v: product.__v
+    })));
+  } catch (error) {
+    console.error('Error searching for products by description:', error);
+    return res.status(500).json({ success: false, message: 'Server error', error: error.message });
+  }
+};
+
+module.exports.filterProducts = async (req, res) => {
+  try {
+    const { category, brand, minPrice, maxPrice } = req.body;
+    const andConditions = [];
+
+    // Both category and brand are searched as substrings in the name
+    if (category) andConditions.push({ name: { $regex: category, $options: 'i' } });
+    if (brand) andConditions.push({ name: { $regex: brand, $options: 'i' } });
+
+    // Price filter
+    if (minPrice !== undefined || maxPrice !== undefined) {
+      const priceCond = {};
+      if (minPrice !== undefined) priceCond.$gte = minPrice;
+      if (maxPrice !== undefined) priceCond.$lte = maxPrice;
+      andConditions.push({ price: priceCond });
+    }
+
+    const query = andConditions.length > 0 ? { $and: andConditions } : {};
+    const products = await Product.find(query);
+    res.status(200).json(products);
+  } catch (error) {
+    res.status(500).json({ success: false, message: 'Server error', error: error.message });
+  }
+};
