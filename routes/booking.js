@@ -9,5 +9,6 @@ router.get("/all-bookings", verify, verifyAdmin, bookingController.retrieveAllBo
 router.patch("/confirm/:bookingId", bookingController.confirmBooking);
 router.patch("/cancel/:bookingId", bookingController.cancelBooking);
 router.patch("/complete/:bookingId", bookingController.completeBooking);
+router.patch("/update/:bookingId", bookingController.updateBooking);
 
 module.exports = router;

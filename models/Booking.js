@@ -46,7 +46,19 @@ const bookingSchema = new mongoose.Schema({
   status: {
     type: String,
     default: 'Pending'
-  }
+  },
+  serviceType: {
+    type: String,
+    required: false
+  },
+  size: {
+    type: String,
+    required: false
+  },
+  serviceTotal: {
+    type: Number,
+    required: false,
+  },
 });
 
 module.exports = mongoose.model('Booking', bookingSchema);
