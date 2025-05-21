@@ -333,10 +333,12 @@ module.exports.bookProductOrService = async (req, res) => {
 
             await newBooking.save(); // Save the new booking
 
-            // Prepare the items booked details
-            const itemsDetails = productsBooked.map(product => 
-                `Product: ${product.productId.name}, Quantity: ${product.quantity}, Subtotal: ₱${product.subtotal}`
-            ).join('\n');
+            // Prepare the items booked details with populated product names
+            const populatedProducts = await Product.find({ _id: { $in: productsBooked.map(p => p.productId) } }).lean();
+            const itemsDetails = populatedProducts.map(product => {
+                const bookedProduct = productsBooked.find(p => p.productId.toString() === product._id.toString());
+                return `Product: ${product.name}, Quantity: ${bookedProduct.quantity}, Subtotal: ₱${bookedProduct.subtotal}`;
+            }).join('\n');
 
             await sendEmail(
                 "bettercoolservicecenter@gmail.com",
