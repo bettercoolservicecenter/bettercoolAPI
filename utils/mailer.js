@@ -19,3 +19,5 @@ transporter.sendMail({
   }).catch(err => {
     console.error("❌ Error sending email:", err);
   });
+
+  module.exports = sendEmail;
