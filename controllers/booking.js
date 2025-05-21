@@ -272,6 +272,26 @@ module.exports.bookProductOrService = async (req, res) => {
 
         // If there is an existing booking
         if (existingBooking) {
+            // Check if the existing booking is canceled
+            if (existingBooking.status === 'Canceled') {
+                // Create a new booking instead of updating the canceled one
+                totalPrice = productsBooked.reduce((acc, product) => acc + product.subtotal, 0) + serviceTotal;
+
+                const newBooking = new Booking({
+                    email,
+                    name,
+                    phoneNumber,
+                    productsBooked,
+                    totalPrice,
+                    serviceType,
+                    size,
+                    serviceTotal,
+                });
+
+                await newBooking.save(); // Save the new booking
+                return res.status(201).json({ message: 'Booking created successfully', booking: newBooking });
+            }
+
             // If the existing booking has products booked
             if (existingBooking.productsBooked.length > 0) {
                 // Retain existing products and add new products
@@ -300,35 +320,33 @@ module.exports.bookProductOrService = async (req, res) => {
             // If no existing booking, create a new one
             totalPrice = productsBooked.reduce((acc, product) => acc + product.subtotal, 0) + serviceTotal;
 
-    const newBooking = new Booking({
-        email,
-        name,
-        phoneNumber,
-        productsBooked,
-        totalPrice,
-        serviceType,
-        size,
-        serviceTotal,
-    });
+            const newBooking = new Booking({
+                email,
+                name,
+                phoneNumber,
+                productsBooked,
+                totalPrice,
+                serviceType,
+                size,
+                serviceTotal,
+            });
 
-    await newBooking.save(); // Save the new booking
+            await newBooking.save(); // Save the new booking
 
-    // 🔔 Send email to yourself
-    await sendEmail(
-        "bettercoolservicecenter@gmail.com",
-        "📢 New Booking Received",
-        `A new booking was made by ${name} (${email}).\n\n` +
-        `Service: ${serviceType}\nSize: ${size}\nTotal: ₱${totalPrice}\n\n` +
-        `Phone: ${phoneNumber}\n\n` +
-        `View this user's booking history:\n` +
-        `https://bettercool-client.vercel.app/bookings/${encodeURIComponent(email)}\n\n` +
-        `Thank you.`
-      );
-      
-      
+            // 🔔 Send email to yourself
+            await sendEmail(
+                "bettercoolservicecenter@gmail.com",
+                "📢 New Booking Received",
+                `A new booking was made by ${name} (${email}).\n\n` +
+                `Service: ${serviceType}\nSize: ${size}\nTotal: ₱${totalPrice}\n\n` +
+                `Phone: ${phoneNumber}\n\n` +
+                `View this user's booking history:\n` +
+                `https://bettercool-client.vercel.app/bookings/${encodeURIComponent(email)}\n\n` +
+                `Thank you.`
+            );
 
-    return res.status(201).json({ message: 'Booking created successfully', booking: newBooking });
-}
+            return res.status(201).json({ message: 'Booking created successfully', booking: newBooking });
+        }
     } catch (error) {
         console.error('Error during booking:', error);
         return res.status(500).json({ message: 'Error during booking', error: error.message });
