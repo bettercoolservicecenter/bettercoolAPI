@@ -5,7 +5,7 @@ const transporter = nodemailer.createTransport({
     port: 587,                     // recommended port
     auth: {
       user: "smtp@mailtrap.io", // exactly as shown in your Mailtrap dashboard
-      pass: "b82ee52385bc29a7f47ea9e10c9b858d",             // your SMTP password from Mailtrap (fill actual password here)
+      pass: process.env.MAILTRAP_PASSWORD,             // your SMTP password from Mailtrap (fill actual password here)
     },
     secure: false,                  // TLS is started via STARTTLS, so false here
     requireTLS: true,               // STARTTLS is required

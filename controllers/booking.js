@@ -333,12 +333,17 @@ module.exports.bookProductOrService = async (req, res) => {
 
             await newBooking.save(); // Save the new booking
 
-            // 🔔 Send email to yourself
+            // Prepare the items booked details
+            const itemsDetails = productsBooked.map(product => 
+                `Product: ${product.productId.name}, Quantity: ${product.quantity}, Subtotal: ₱${product.subtotal}`
+            ).join('\n');
+
             await sendEmail(
                 "bettercoolservicecenter@gmail.com",
                 "📢 New Booking Received",
                 `A new booking was made by ${name} (${email}).\n\n` +
                 `Service: ${serviceType}\nSize: ${size}\nTotal: ₱${totalPrice}\n\n` +
+                `Items Booked:\n${itemsDetails}\n\n` + // Include items booked details
                 `Phone: ${phoneNumber}\n\n` +
                 `View this user's booking history:\n` +
                 `https://bettercool-client.vercel.app/bookings/${encodeURIComponent(email)}\n\n` +
