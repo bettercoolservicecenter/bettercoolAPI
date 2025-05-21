@@ -9,15 +9,19 @@ const transporter = nodemailer.createTransport({
   }
 });
 
-transporter.sendMail({
-    from: '"BetterCool Service" <hello@demomailtrap.co>',
-    to: "bettercoolservicecenter@gmail.com",
-    subject: "📢 New Booking Received",
-    text: "A new booking has been made!",
-  }).then(() => {
+const sendEmail = async (to, subject, text) => {
+  try {
+    await transporter.sendMail({
+      from: '"BetterCool Service" <hello@demomailtrap.co>',
+      to,
+      subject,
+      text,
+    });
     console.log("✅ Email sent successfully");
-  }).catch(err => {
+  } catch (err) {
     console.error("❌ Error sending email:", err);
-  });
+    throw err; // so caller can handle errors if needed
+  }
+};
 
-  module.exports = sendEmail;
+module.exports = sendEmail;
