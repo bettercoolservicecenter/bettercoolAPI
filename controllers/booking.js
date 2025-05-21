@@ -3,6 +3,27 @@ const User = require('../models/User');
 const Product = require('../models/Product');
 const Booking = require('../models/Booking');
 
+const updateBooking = async (req, res, bookingId, updateData) => {
+    try {
+        const booking = await Booking.findById(bookingId);
+        if (!booking) {
+            return res.status(404).json({ message: 'Booking not found' });
+        }
+
+        // Update the booking fields
+        booking.serviceType = updateData.serviceType || booking.serviceType;
+        booking.size = updateData.size || booking.size;
+        booking.totalPrice += updateData.totalPrice; // Add the new total price
+        booking.serviceTotal += updateData.serviceTotal; // Add to existing service total
+        booking.productsBooked = updateData.productsBooked; // Update products booked
+
+        await booking.save();
+        return res.status(200).json({ message: 'Booking updated successfully', booking });
+    } catch (error) {
+        console.error('Error updating booking:', error);
+        return res.status(500).json({ message: 'Error updating booking', error: error.message });
+    }
+};
 
 module.exports.createBooking = async (req, res) => {
     const { email, totalPrice, name, phoneNumber, productsBooked, serviceType, size, serviceTotal } = req.body;
@@ -13,34 +34,38 @@ module.exports.createBooking = async (req, res) => {
         
         // If an existing booking is found, check its status
         if (existingBooking) {
-            if (existingBooking.status === 'Pending' || existingBooking.status === 'Confirmed') {
-                // Check if the existing booking is for a service and productsBooked is empty
-                if (existingBooking.serviceType && existingBooking.productsBooked.length === 0) {
-                    // Call the updateBooking function instead of modifying directly
-                    return await updateBooking(req, res, existingBooking._id, {
-                        serviceType,
-                        size,
-                        totalPrice,
-                        serviceTotal,
-                        productsBooked: existingBooking.productsBooked // Retain existing products
-                    });
-                } else {
-                    return res.status(400).json({ message: 'You already have a pending or confirmed booking.' });
-                }
+            // Check if the existing booking has products booked
+            const hasProductsBooked = existingBooking.productsBooked.length > 0;
+
+            // If there are products booked, update the existing booking
+            if (hasProductsBooked) {
+                // Update the existing booking with the new service details
+                existingBooking.serviceType = serviceType;
+                existingBooking.size = size;
+                existingBooking.totalPrice += totalPrice; // Add the new service total to the existing total
+                existingBooking.serviceTotal += serviceTotal; // Add to existing service total
+
+                // Add the new service to the productsBooked array
+                existingBooking.productsBooked.push(...productsBooked); // Assuming productsBooked is an array
+
+                await existingBooking.save(); // Save the updated booking
+
+                return res.status(200).json({ message: 'Booking updated successfully', booking: existingBooking });
             }
         }
 
-        // Create a new booking if no existing booking is found
+        // If no existing booking or no products booked, create a new booking
         const newBooking = new Booking({
             email,
             totalPrice,
             name,
             phoneNumber,
-            productsBooked,
+            productsBooked, // Ensure this is included
             serviceType,
             size,
             serviceTotal,
         });
+        
         await newBooking.save();
 
         // Respond with the new booking
@@ -107,14 +132,12 @@ module.exports.retrieveUserBookings = async (req, res) => {
 
 module.exports.retrieveAllBookings = async (req, res) => {
     try {
-        // Fetch all bookings and populate product details
         const bookings = await Booking.find({})
             .populate('productsBooked.productId')
             .exec();
 
-        // Group bookings by email
         const bookingsByEmail = bookings.reduce((acc, booking) => {
-            const email = booking.email; // Use the email field from the booking
+            const email = booking.email;
             if (!acc[email]) {
                 acc[email] = [];
             }
@@ -122,6 +145,7 @@ module.exports.retrieveAllBookings = async (req, res) => {
                 _id: booking._id,
                 productsBooked: booking.productsBooked.map(product => ({
                     productId: product.productId ? product.productId._id : null,
+                    name: product.productId ? product.productId.name : null,
                     quantity: product.quantity,
                     subtotal: product.subtotal,
                     _id: product._id
@@ -129,6 +153,9 @@ module.exports.retrieveAllBookings = async (req, res) => {
                 totalPrice: booking.totalPrice,
                 status: booking.status,
                 orderedOn: booking.bookedOn,
+                serviceType: booking.serviceType,
+                size: booking.size,
+                serviceTotal: booking.serviceTotal,
                 __v: booking.__v
             });
             return acc;
@@ -202,8 +229,11 @@ module.exports.completeBooking = async (req, res) => {
 };
 
 module.exports.updateBooking = async (req, res) => {
-    const { bookingId } = req.params;
-    const { serviceType, size, totalPrice, productsBooked, serviceTotal } = req.body;
+    const { bookingId } = req.params; // Get booking ID from URL parameters
+    const updateData = req.body; // Get update data from request body
+
+    console.log('Booking ID:', bookingId);
+    console.log('Update Data:', updateData);
 
     try {
         const booking = await Booking.findById(bookingId);
@@ -211,28 +241,12 @@ module.exports.updateBooking = async (req, res) => {
             return res.status(404).json({ message: 'Booking not found' });
         }
 
-        // Update the booking fields
-        booking.totalPrice += totalPrice; // Add the new total price
-
-        // Update service total only if provided, otherwise retain existing value
-        if (serviceTotal) {
-            booking.serviceTotal += serviceTotal; // Add to existing service total
-        }
-
-        booking.productsBooked = productsBooked; // Update products booked
-
-        // Retain existing service type and size if they are not provided in the request
-        if (!serviceType) {
-            booking.serviceType = booking.serviceType; // Retain existing service type
-        } else {
-            booking.serviceType = serviceType; // Update service type if provided
-        }
-
-        if (!size) {
-            booking.size = booking.size; // Retain existing size
-        } else {
-            booking.size = size; // Update size if provided
-        }
+        // Update booking fields
+        booking.serviceType = updateData.serviceType || booking.serviceType;
+        booking.size = updateData.size || booking.size;
+        booking.totalPrice += updateData.totalPrice; // Update total price
+        booking.serviceTotal += updateData.serviceTotal; // Update service total
+        booking.productsBooked = updateData.productsBooked; // Update products booked
 
         await booking.save();
         return res.status(200).json({ message: 'Booking updated successfully', booking });
@@ -241,3 +255,66 @@ module.exports.updateBooking = async (req, res) => {
         return res.status(500).json({ message: 'Error updating booking', error: error.message });
     }
 };
+
+module.exports.bookProductOrService = async (req, res) => {
+    const { email, name, phoneNumber, productsBooked, serviceType, size, serviceTotal } = req.body;
+
+    console.log('Received booking data:', req.body);
+
+    try {
+        // Fetch existing bookings for the user
+        const existingBooking = await Booking.findOne({ email });
+
+        let totalPrice = 0;
+        let updatedProductsBooked = [];
+
+        // If there is an existing booking
+        if (existingBooking) {
+            // If the existing booking has products booked
+            if (existingBooking.productsBooked.length > 0) {
+                // Retain existing products and add new products
+                updatedProductsBooked = [...existingBooking.productsBooked, ...productsBooked];
+                totalPrice = existingBooking.totalPrice; // Start with existing total price
+            } else {
+                // If no products booked, just add the new products
+                updatedProductsBooked = productsBooked;
+            }
+
+            // If the user is booking a service
+            if (serviceType) {
+                totalPrice += serviceTotal; // Add service total to the existing total
+                existingBooking.serviceType = serviceType; // Update service type
+                existingBooking.size = size; // Update size
+                existingBooking.serviceTotal = serviceTotal; // Update service total
+            }
+
+            // Update total price
+            existingBooking.totalPrice = totalPrice;
+            existingBooking.productsBooked = updatedProductsBooked;
+
+            await existingBooking.save(); // Save the updated booking
+            return res.status(200).json({ message: 'Booking updated successfully', booking: existingBooking });
+        } else {
+            // If no existing booking, create a new one
+            totalPrice = productsBooked.reduce((acc, product) => acc + product.subtotal, 0) + serviceTotal;
+
+            const newBooking = new Booking({
+                email,
+                name,
+                phoneNumber,
+                productsBooked,
+                totalPrice,
+                serviceType,
+                size,
+                serviceTotal,
+            });
+
+            await newBooking.save(); // Save the new booking
+            return res.status(201).json({ message: 'Booking created successfully', booking: newBooking });
+        }
+    } catch (error) {
+        console.error('Error during booking:', error);
+        return res.status(500).json({ message: 'Error during booking', error: error.message });
+    }
+};
+

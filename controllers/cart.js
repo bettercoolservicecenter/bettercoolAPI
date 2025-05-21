@@ -300,3 +300,62 @@ module.exports.getCartItemCount = async (req, res) => {
     return res.status(500).json({ success: false, message: 'Server error', error: error.message });
   }
 };
+
+const handleBookNow = async (guestInfo) => {
+    const bookingData = {
+        email: guestInfo.email,
+        name: guestInfo.name,
+        phoneNumber: guestInfo.phoneNumber,
+        totalPrice: cart.totalPrice,
+        productsBooked: cart.cartItems.map(item => ({
+            productId: item.productId,
+            quantity: item.quantity,
+            subtotal: item.subtotal,
+        })),
+        serviceType: selectedService,
+        size: selectedSize,
+        serviceTotal: totalPrice
+    };
+
+    try {
+        // Check for existing bookings
+        const existingResponse = await fetch(`${process.env.REACT_APP_API_BASE_URL}/bookings/my-bookings/${bookingData.email}`);
+        const existingData = await existingResponse.json();
+
+        if (existingResponse.ok) {
+            // Allow booking if the existing booking is for a product or if productsBooked is empty
+            const hasPendingService = existingData.bookings.some(booking => 
+                booking.serviceType && (booking.status === 'Pending' || booking.status === 'Confirmed')
+            );
+
+            // If there are no pending services, proceed with booking
+            if (!hasPendingService) {
+                const response = await fetch(`${process.env.REACT_APP_API_BASE_URL}/bookings/book-now/${bookingData.email}`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify(bookingData),
+                });
+
+                if (response.ok) {
+                    notyf.success('Product booked successfully!');
+                    await handleClearCart();
+                    navigate(`/bookings/${bookingData.email}`);
+                } else {
+                    const errorData = await response.json();
+                    notyf.error(errorData.message || 'Failed to book product');
+                }
+            } else {
+                notyf.error('You cannot book a product while you have a pending service.');
+            }
+        } else {
+            notyf.error('Failed to fetch existing bookings');
+        }
+    } catch (error) {
+        console.error('Error during booking:', error);
+        notyf.error('An error occurred while processing your booking');
+    }
+
+    setShowModal(false);
+};
