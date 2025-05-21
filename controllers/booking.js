@@ -2,6 +2,8 @@ const Cart = require('../models/Cart');
 const User = require('../models/User');
 const Product = require('../models/Product');
 const Booking = require('../models/Booking');
+const sendEmail = require('../utils/mailer');
+
 
 const updateBooking = async (req, res, bookingId, updateData) => {
     try {
@@ -298,20 +300,30 @@ module.exports.bookProductOrService = async (req, res) => {
             // If no existing booking, create a new one
             totalPrice = productsBooked.reduce((acc, product) => acc + product.subtotal, 0) + serviceTotal;
 
-            const newBooking = new Booking({
-                email,
-                name,
-                phoneNumber,
-                productsBooked,
-                totalPrice,
-                serviceType,
-                size,
-                serviceTotal,
-            });
+    const newBooking = new Booking({
+        email,
+        name,
+        phoneNumber,
+        productsBooked,
+        totalPrice,
+        serviceType,
+        size,
+        serviceTotal,
+    });
 
-            await newBooking.save(); // Save the new booking
-            return res.status(201).json({ message: 'Booking created successfully', booking: newBooking });
-        }
+    await newBooking.save(); // Save the new booking
+
+    // 🔔 Send email to yourself
+    await sendEmail(
+        "bettercoolservicecenter@gmail.com", // Replace with your real email
+        "📢 New Booking Received",
+        `A new booking was made by ${name} (${email}).\n\n` +
+        `Service: ${serviceType}\nSize: ${size}\nTotal: ₱${totalPrice}\n\n` +
+        `Phone: ${phoneNumber}\n\nThank you.`
+    );
+
+    return res.status(201).json({ message: 'Booking created successfully', booking: newBooking });
+}
     } catch (error) {
         console.error('Error during booking:', error);
         return res.status(500).json({ message: 'Error during booking', error: error.message });
