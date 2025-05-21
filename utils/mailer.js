@@ -1,13 +1,15 @@
 const nodemailer = require("nodemailer");
 
 const transporter = nodemailer.createTransport({
-  host: "sandbox.smtp.mailtrap.io", // or live.smtp.mailtrap.io for production
-  port: 587,
-  auth: {
-    user: "api", // ✅ copy from Mailtrap
-    pass: "b82ee52385bc29a7f47ea9e10c9b858d"  // ✅ copy from Mailtrap
-  }
-});
+    host: "live.smtp.mailtrap.io", // as per your credentials
+    port: 587,                     // recommended port
+    auth: {
+      user: "smtp@mailtrap.io", // exactly as shown in your Mailtrap dashboard
+      pass: "b82ee52385bc29a7f47ea9e10c9b858d",             // your SMTP password from Mailtrap (fill actual password here)
+    },
+    secure: false,                  // TLS is started via STARTTLS, so false here
+    requireTLS: true,               // STARTTLS is required
+  });
 
 const sendEmail = async (to, subject, text) => {
   try {
