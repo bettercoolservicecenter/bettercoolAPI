@@ -19,7 +19,7 @@ mongoose.connect(process.env.MONGODB_STRING)
 app.use(express.json());
 const corsOptions = {
     // Origin of the request
-    origin: ['http://localhost:8000', 'http://localhost:3000'],
+    origin: ['https://bettercool-client.vercel.app', 'http://localhost:3000'],
     // methods: ['GET', 'POST'],
     // allowedHeaders: ['Content-Type', 'Authorization'],
     credentials: true,
