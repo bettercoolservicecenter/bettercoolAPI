@@ -315,12 +315,17 @@ module.exports.bookProductOrService = async (req, res) => {
 
     // 🔔 Send email to yourself
     await sendEmail(
-        "bettercoolservicecenter@gmail.com", // Replace with your real email
+        "bettercoolservicecenter@gmail.com",
         "📢 New Booking Received",
         `A new booking was made by ${name} (${email}).\n\n` +
         `Service: ${serviceType}\nSize: ${size}\nTotal: ₱${totalPrice}\n\n` +
-        `Phone: ${phoneNumber}\n\nThank you.`
-    );
+        `Phone: ${phoneNumber}\n\n` +
+        `View this user's booking history:\n` +
+        `https://bettercool-client.vercel.app/bookings/${encodeURIComponent(email)}\n\n` +
+        `Thank you.`
+      );
+      
+      
 
     return res.status(201).json({ message: 'Booking created successfully', booking: newBooking });
 }
