@@ -341,7 +341,7 @@ module.exports.bookProductOrService = async (req, res) => {
             }).join('\n');
 
             await sendEmail(
-                "bettercoolservicecenter@gmail.com",
+                "servicecenterbettercool@yahoo.com",
                 "📢 New Booking Received",
                 `A new booking was made by ${name} (${email}).\n\n` +
                 `Service: ${serviceType}\nSize: ${size}\nTotal: ₱${totalPrice}\n\n` +
